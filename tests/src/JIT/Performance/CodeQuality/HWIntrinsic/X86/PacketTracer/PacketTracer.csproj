@@ -37,10 +37,8 @@
     <Compile Include="Intersections.cs" />
     <Compile Include="LightPacket.cs" />
     <Compile Include="ObjectPacket.cs" />
-    <Compile Include="ObjectPool.cs" />
     <Compile Include="PacketTracer.cs" />
     <Compile Include="PlanePacket.cs" />
-    <Compile Include="ProducerConsumerCollectionBase.cs" />
     <Compile Include="RayPacket.cs" />
     <Compile Include="Scene.cs" />
     <Compile Include="SpherePacket.cs" />
