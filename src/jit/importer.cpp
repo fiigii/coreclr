@@ -4615,7 +4615,7 @@ NamedIntrinsic Compiler::lookupNamedIntrinsic(CORINFO_METHOD_HANDLE method)
                         {
                             methodName += 2;
 
-                            if (strcmp(methodName, "`1") == 0)
+                            if (methodName[0] == '\0')
                             {
                                 result = NI_Base_Vector128_As;
                             }
