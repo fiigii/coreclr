@@ -102,6 +102,15 @@ namespace System.Runtime.Intrinsics
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void ThrowIfOutOfRange(int index, int range)
+        {
+            if ((uint)(index) >= (uint)(Count))
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+        }
+
         /// <summary>Reinterprets the current instance as a new <see cref="Vector256{U}" />.</summary>
         /// <typeparam name="U">The type of the vector the current instance should be reinterpreted as.</typeparam>
         /// <returns>The current instance reinterpreted as a new <see cref="Vector256{U}" />.</returns>
@@ -241,17 +250,32 @@ namespace System.Runtime.Intrinsics
         /// <returns>The value of the element at <paramref name="index" />.</returns>
         /// <exception cref="NotSupportedException">The type of the current instance (<typeparamref name="T" />) is not supported.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> was less than zero or greater than the number of elements.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetElement(int index)
         {
             ThrowIfUnsupportedType();
+            ThrowIfOutOfRange(index, Count);
 
-            if ((uint)(index) >= (uint)(Count))
+            if (Avx.IsSupported)
             {
-                throw new ArgumentOutOfRangeException(nameof(index));
+                if (index >= Count/2)
+                {
+                    return GetUpper().GetElement(index - Count/2);
+                }
+                else
+                {
+                    return GetLower().GetElement(index);
+                }
+            }
+            {
+                return SoftwareFallback(in this, index);
             }
 
-            ref T e0 = ref Unsafe.As<Vector256<T>, T>(ref Unsafe.AsRef(in this));
-            return Unsafe.Add(ref e0, index);
+            T SoftwareFallback(in Vector256<T> x, int i)
+            {
+                ref T e0 = ref Unsafe.As<Vector256<T>, T>(ref Unsafe.AsRef(in x));
+                return Unsafe.Add(ref e0, i);
+            }
         }
 
         /// <summary>Creates a new <see cref="Vector256{T}" /> with the element at the specified index set to the specified value and the remaining elements set to the same value as that in the current instance.</summary>

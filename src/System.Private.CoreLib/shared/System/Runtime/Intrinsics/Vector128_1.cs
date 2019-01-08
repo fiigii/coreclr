@@ -100,6 +100,15 @@ namespace System.Runtime.Intrinsics
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void ThrowIfOutOfRange(int index, int range)
+        {
+            if ((uint)(index) >= (uint)(Count))
+            {
+                throw new ArgumentOutOfRangeException();
+            }
+        }
+
         /// <summary>Reinterprets the current instance as a new <see cref="Vector128{U}" />.</summary>
         /// <typeparam name="U">The type of the vector the current instance should be reinterpreted as.</typeparam>
         /// <returns>The current instance reinterpreted as a new <see cref="Vector128{U}" />.</returns>
@@ -241,17 +250,125 @@ namespace System.Runtime.Intrinsics
         /// <returns>The value of the element at <paramref name="index" />.</returns>
         /// <exception cref="NotSupportedException">The type of the current instance (<typeparamref name="T" />) is not supported.</exception>
         /// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> was less than zero or greater than the number of elements.</exception>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T GetElement(int index)
         {
             ThrowIfUnsupportedType();
+            ThrowIfOutOfRange(index, Count);
 
-            if ((uint)(index) >= (uint)(Count))
+            // here will be HW intrinsic implementation
+            /*
+            if (typeof(T) == typeof(ushort) && Sse2.IsSupported)
             {
-                throw new ArgumentOutOfRangeException(nameof(index));
+                if (typeof(T) == typeof(ushort))
+                {
+                    Vector128<ushort> v = this.As<ushort>();
+                    if (index == 0)
+                    {
+                        return (T)(object)Sse2.Extract(v, 0);
+                    }
+                    else if (index == 1)
+                    {
+                        return (T)(object)Sse2.Extract(v, 0);
+                    }
+                    else if (index == 2)
+                    {
+                        return (T)(object)Sse2.Extract(v, 2);
+                    }
+                    else if (index == 3)
+                    {
+                        return (T)(object)Sse2.Extract(v, 3);
+                    }
+                    else if (index == 4)
+                    {
+                        return (T)(object)Sse2.Extract(v, 4);
+                    }
+                    else if (index == 5)
+                    {
+                        return (T)(object)Sse2.Extract(v, 5);
+                    }
+                    else if (index == 6)
+                    {
+                        return (T)(object)Sse2.Extract(v, 6);
+                    }
+                    else
+                    {
+                        return (T)(object)Sse2.Extract(v, 7);
+                    }
+                }
             }
+            else if (Sse41.IsSupported)
+            {
+                if (typeof(T) == typeof(int))
+                {
+                    Vector128<int> v = this.As<int>();
+                    if (index == 0)
+                    {
+                        return (T)(object)Sse2.ConvertToInt32(v);
+                    }
+                    else if (index == 1)
+                    {
+                        return (T)(object)Sse41.Extract(v, 0);
+                    }
+                    else if (index == 2)
+                    {
+                        return (T)(object)Sse41.Extract(v, 2);
+                    }
+                    else
+                    {
+                        return (T)(object)Sse41.Extract(v, 3);
+                    }
+                }
+                else if (typeof(T) == typeof(uint))
+                {
+                    Vector128<uint> v = this.As<uint>();
+                    if (index == 0)
+                    {
+                        return (T)(object)Sse2.ConvertToUInt32(v);
+                    }
+                    else if (index == 1)
+                    {
+                        return (T)(object)Sse41.Extract(v, 0);
+                    }
+                    else if (index == 2)
+                    {
+                        return (T)(object)Sse41.Extract(v, 2);
+                    }
+                    else
+                    {
+                        return (T)(object)Sse41.Extract(v, 3);
+                    }
+                }
+                else if (typeof(T) == typeof(float))
+                {
+                    Vector128<float> v = this.As<float>();
+                    if (index == 0)
+                    {
+                        return ToScalar();
+                    }
+                    else if (index == 1)
+                    {
+                        return (T)(object)Sse41.Extract(v, 0);
+                    }
+                    else if (index == 2)
+                    {
+                        return (T)(object)Sse41.Extract(v, 2);
+                    }
+                    else
+                    {
+                        return (T)(object)Sse41.Extract(v, 3);
+                    }
+                }
+            }
+            */
 
-            ref T e0 = ref Unsafe.As<Vector128<T>, T>(ref Unsafe.AsRef(in this));
-            return Unsafe.Add(ref e0, index);
+            return SoftwareFallback(in this, index);
+
+            T SoftwareFallback(in Vector128<T> x, int i)
+            {
+                ref T e0 = ref Unsafe.As<Vector128<T>, T>(ref Unsafe.AsRef(in x));
+                return Unsafe.Add(ref e0, i);
+            }
         }
 
         /// <summary>Creates a new <see cref="Vector128{T}" /> with the element at the specified index set to the specified value and the remaining elements set to the same value as that in the current instance.</summary>
