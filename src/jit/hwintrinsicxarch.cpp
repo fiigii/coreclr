@@ -729,7 +729,8 @@ static bool impIsTableDrivenHWIntrinsic(NamedIntrinsic intrinsicId, HWIntrinsicC
 GenTree* Compiler::impHWIntrinsic(NamedIntrinsic        intrinsic,
                                   CORINFO_METHOD_HANDLE method,
                                   CORINFO_SIG_INFO*     sig,
-                                  bool                  mustExpand)
+                                  bool                  mustExpand,
+                                  bool*                 canExpandAgain)
 {
     InstructionSet      isa      = HWIntrinsicInfo::lookupIsa(intrinsic);
     HWIntrinsicCategory category = HWIntrinsicInfo::lookupCategory(intrinsic);
@@ -787,6 +788,7 @@ GenTree* Compiler::impHWIntrinsic(NamedIntrinsic        intrinsic,
                 // return nullptr so a GT_CALL to the intrinsic method is emitted instead. The
                 // intrinsic method is recursive and will be forced to expand, at which point
                 // we emit some less efficient fallback code.
+                *canExpandAgain = true;
                 return nullptr;
             }
         }

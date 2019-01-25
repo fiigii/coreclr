@@ -11794,7 +11794,20 @@ GenTree* Compiler::gtFoldExprCall(GenTreeCall* call)
     }
 
     // Check for a new-style jit intrinsic.
-    const NamedIntrinsic ni = lookupNamedIntrinsic(call->gtCallMethHnd);
+    const NamedIntrinsic ni = call->NamedIntrinsicID;
+    assert(lookupNamedIntrinsic(call->gtCallMethHnd) == ni);
+
+#if defined(FEATURE_HW_INTRINSICS) && defined(_TARGET_XARCH_)
+    if (HWIntrinsicInfo::isHWIntrinsic(ni))
+    {
+        GenTree* result = gtOptimizeHWIntrinsicFallback(call);
+
+        if (result != nullptr)
+        {
+            return result;
+        }
+    }
+#endif
 
     if (ni == NI_System_Enum_HasFlag)
     {
@@ -12841,6 +12854,91 @@ GenTree* Compiler::gtTryRemoveBoxUpstreamEffects(GenTree* op, BoxRemovalOptions 
         return copySrc;
     }
 }
+
+#if defined(FEATURE_HW_INTRINSICS) && defined(_TARGET_XARCH_)
+GenTree* Compiler::gtOptimizeHWIntrinsicFallback(GenTreeCall* call)
+{
+    assert(call->IsSpecialIntrinsic());
+    assert(call->gtCallObjp == nullptr);
+    NamedIntrinsic intrinsic = call->NamedIntrinsicID;
+
+    if (HWIntrinsicInfo::lookupCategory(intrinsic) != HW_Category_IMM || !call->AreArgsComplete())
+    {
+        return nullptr;
+    }
+
+    unsigned numArgs = call->fgArgInfo->ArgCount();
+    assert(HWIntrinsicInfo::lookup(intrinsic).numArgs == -1 || HWIntrinsicInfo::lookup(intrinsic).numArgs == numArgs);
+    assert(numArgs != 1);
+    assert(numArgs != 0);
+
+    GenTree* lastOp = call->fgArgInfo->GetArgNode(numArgs - 1);
+
+    if (!lastOp->IsCnsIntOrI())
+    {
+        return nullptr;
+    }
+
+    GenTreeArgList* args = call->gtCallLateArgs;
+    
+    /*
+    if (numArgs == 2)
+    {
+        op1    = args->Current();
+        lastOp = op2 = args->Rest()->Current();
+        assert(args->Rest()->Rest() == nullptr);
+    }
+    else
+    {
+        GenTreeArgList* ops = args;
+        int             num = 0;
+
+        do
+        {
+            num++;
+            ops = ops->Rest();
+        } while (ops->Rest() != nullptr);
+
+        num++;
+        lastOp = ops->Current();
+
+        assert(numArgs == -1 || numArgs == num);
+
+        if (num == 2)
+        {
+            op1 = args->Current();
+            op2 = lastOp;
+            assert(args->Rest()->Rest() == nullptr);
+        }
+        else
+        {
+            op1 = args;
+        }
+    }
+    */
+
+    GenTree* op1    = args->Current();
+    GenTree* op2    = nullptr;
+
+    /*
+    if (op1->OperGet() == GT_ADDR && op1->TypeGet() == TYP_BYREF)
+    {
+        op1 = op1->gtOp.gtOp1;
+        if (op1->OperGet() == GT_LCL_VAR || op1->OperGet() == GT_LCL_FLD)
+        {
+            GenTreeLclVarCommon* varNode = op1->AsLclVarCommon();
+            unsigned             varNum  = varNode->gtLclNum;
+            LclVarDsc* varDsc = &lvaTable[varNum];
+
+            varDsc->lvAddrExposed = false;
+        }
+    }
+    */
+
+    return gtNewSimdHWIntrinsicNode(call->TypeGet(), op1, lastOp, intrinsic, TYP_INT, 16);
+
+}
+#endif
 
 //------------------------------------------------------------------------
 // gtOptimizeEnumHasFlag: given the operands for a call to Enum.HasFlag,
