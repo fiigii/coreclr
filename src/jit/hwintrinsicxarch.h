@@ -149,6 +149,11 @@ struct HWIntrinsicInfo
     static bool isFullyImplementedIsa(InstructionSet isa);
     static bool isScalarIsa(InstructionSet isa);
 
+    static bool isHWIntrinsic(NamedIntrinsic id)
+    {
+        return (id > NI_HW_INTRINSIC_START) && (id < NI_HW_INTRINSIC_END);
+    }
+
     // Member lookup
 
     static NamedIntrinsic lookupId(NamedIntrinsic id)

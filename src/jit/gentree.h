@@ -3791,6 +3791,19 @@ struct GenTreeCall final : public GenTree
     {
         fgArgInfo = nullptr;
     }
+
+    NamedIntrinsic NamedIntrinsicID = NI_Illegal;
+
+    bool IsSpecialIntrinsic() const
+    {
+        return (gtCallMoreFlags & GTF_CALL_M_SPECIAL_INTRINSIC) != 0;
+    }
+
+    void SetIsSpecialIntrinsic()
+    {
+        gtCallMoreFlags |= GTF_CALL_M_SPECIAL_INTRINSIC;
+    }
+
 #if DEBUGGABLE_GENTREE
     GenTreeCall() : GenTree()
     {

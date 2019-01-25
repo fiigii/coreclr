@@ -3416,6 +3416,7 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
                                 CORINFO_RESOLVED_TOKEN* pConstrainedResolvedToken,
                                 CORINFO_THIS_TRANSFORM  constraintCallThisTransform,
                                 CorInfoIntrinsics*      pIntrinsicID,
+                                NamedIntrinsic*         pNamedIntrinsicID,
                                 bool*                   isSpecialIntrinsic)
 {
     assert((methodFlags & (CORINFO_FLG_INTRINSIC | CORINFO_FLG_JIT_INTRINSIC)) != 0);
@@ -3496,11 +3497,15 @@ GenTree* Compiler::impIntrinsic(GenTree*                newobjThis,
 
             if ((ni > NI_HW_INTRINSIC_START) && (ni < NI_HW_INTRINSIC_END))
             {
-                GenTree* hwintrinsic = impHWIntrinsic(ni, method, sig, mustExpand);
+                GenTree* hwintrinsic = impHWIntrinsic(ni, method, sig, mustExpand, isSpecialIntrinsic);
 
                 if (mustExpand && (hwintrinsic == nullptr))
                 {
                     return impUnsupportedHWIntrinsic(CORINFO_HELP_THROW_NOT_IMPLEMENTED, method, sig, mustExpand);
+                }
+                else if (*isSpecialIntrinsic && (hwintrinsic == nullptr))
+                {
+                    *pNamedIntrinsicID = ni;
                 }
 
                 return hwintrinsic;
@@ -7745,13 +7750,15 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
 #endif // DEBUG
 
         // <NICE> Factor this into getCallInfo </NICE>
-        bool isSpecialIntrinsic = false;
+        bool           isSpecialIntrinsic = false;
+        NamedIntrinsic namedIntrinsicID   = NI_Illegal;
         if ((mflags & (CORINFO_FLG_INTRINSIC | CORINFO_FLG_JIT_INTRINSIC)) != 0)
         {
             const bool isTail = canTailCall && (tailCall != 0);
 
             call = impIntrinsic(newobjThis, clsHnd, methHnd, sig, mflags, pResolvedToken->token, readonlyCall, isTail,
-                                pConstrainedResolvedToken, callInfo->thisTransform, &intrinsicID, &isSpecialIntrinsic);
+                                pConstrainedResolvedToken, callInfo->thisTransform, &intrinsicID, &namedIntrinsicID,
+                                &isSpecialIntrinsic);
 
             if (compDonotInline())
             {
@@ -8065,6 +8072,7 @@ var_types Compiler::impImportCall(OPCODE                  opcode,
         if (isSpecialIntrinsic)
         {
             call->gtCall.gtCallMoreFlags |= GTF_CALL_M_SPECIAL_INTRINSIC;
+            call->gtCall.NamedIntrinsicID = namedIntrinsicID;
         }
     }
     assert(sig);

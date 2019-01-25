@@ -881,6 +881,39 @@ void Lowering::LowerHWIntrinsic(GenTreeHWIntrinsic* node)
 {
     ContainCheckHWIntrinsic(node);
 }
+
+GenTree* Lowering::LowerImmHWIntrinsicFallback(GenTreeCall* call)
+{
+    assert(call->IsSpecialIntrinsic());
+    assert(call->gtCallObjp == nullptr);
+    NamedIntrinsic intrinsic = call->NamedIntrinsicID;
+
+    if (HWIntrinsicInfo::lookupCategory(intrinsic) != HW_Category_IMM)
+    {
+        return nullptr;
+    }
+
+    unsigned numArgs = call->fgArgInfo->ArgCount();
+    assert(HWIntrinsicInfo::lookup(intrinsic).numArgs == -1 || HWIntrinsicInfo::lookup(intrinsic).numArgs == numArgs);
+    assert(numArgs != 1);
+    assert(numArgs != 0);
+
+    GenTree* lastOp = call->fgArgInfo->GetArgNode(numArgs - 1);
+
+    if (!lastOp->IsCnsIntOrI())
+    {
+        return nullptr;
+    }
+
+    GenTreeArgList* args = call->gtCallLateArgs;
+
+    GenTree* op1    = nullptr;
+    GenTree* op2    = nullptr;
+
+    printf("\nhahaha\n");
+
+    return comp->gtNewSimdHWIntrinsicNode(call->TypeGet(), args->Current(), lastOp, intrinsic, TYP_INT, 16);
+}
 #endif // FEATURE_HW_INTRINSICS
 
 //----------------------------------------------------------------------------------------------

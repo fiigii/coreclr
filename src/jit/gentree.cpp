@@ -11794,7 +11794,8 @@ GenTree* Compiler::gtFoldExprCall(GenTreeCall* call)
     }
 
     // Check for a new-style jit intrinsic.
-    const NamedIntrinsic ni = lookupNamedIntrinsic(call->gtCallMethHnd);
+    const NamedIntrinsic ni = call->NamedIntrinsicID;
+    assert(lookupNamedIntrinsic(call->gtCallMethHnd) == ni);
 
     if (ni == NI_System_Enum_HasFlag)
     {

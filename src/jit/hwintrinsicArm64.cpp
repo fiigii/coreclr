@@ -280,7 +280,8 @@ int HWIntrinsicInfo::lookupNumArgs(const GenTreeHWIntrinsic* node)
 GenTree* Compiler::impHWIntrinsic(NamedIntrinsic        intrinsic,
                                   CORINFO_METHOD_HANDLE method,
                                   CORINFO_SIG_INFO*     sig,
-                                  bool                  mustExpand)
+                                  bool                  mustExpand,
+                                  bool*                 canExpandAgain)
 {
     GenTree*             retNode       = nullptr;
     GenTree*             op1           = nullptr;

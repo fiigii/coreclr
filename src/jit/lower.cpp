@@ -165,6 +165,12 @@ GenTree* Lowering::LowerNode(GenTree* node)
 
         case GT_CALL:
             LowerCall(node);
+#if defined(_TARGET_XARCH_) && defined(FEATURE_HW_INTRINSICS)
+            if(node->OperIsHWIntrinsic())
+            {
+                LowerHWIntrinsic(node->AsHWIntrinsic());
+            }
+#endif
             break;
 
         case GT_LT:
@@ -1567,6 +1573,24 @@ void Lowering::LowerCall(GenTree* node)
     JITDUMP("lowering call (before):\n");
     DISPTREERANGE(BlockRange(), call);
     JITDUMP("\n");
+
+#if defined(_TARGET_XARCH_) && defined(FEATURE_HW_INTRINSICS)
+    if (call->IsSpecialIntrinsic() && !comp->opts.compDbgCode && !comp->opts.MinOpts())
+    {
+        GenTree* intrinsicNode = nullptr;
+        assert(call->NamedIntrinsicID != NI_Illegal);
+        if (HWIntrinsicInfo::isHWIntrinsic(call->NamedIntrinsicID))
+        {
+            intrinsicNode = LowerImmHWIntrinsicFallback(call);
+        }
+
+        if (intrinsicNode != nullptr)
+        {
+            assert(intrinsicNode->OperIsHWIntrinsic());
+            return;
+        }
+    }
+#endif
 
     call->ClearOtherRegs();
     LowerArgsForCall(call);
